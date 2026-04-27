@@ -1,2 +1,6 @@
 backend/dataset
 .venv
+backend/dataset/images
+**/__pycache__/
+*.py[cod]
+*$py.class
