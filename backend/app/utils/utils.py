@@ -24,11 +24,11 @@ class Visualization:
     def plot_chart(self, 
         step:int,                                       
         images: int,                                    
-        size_rnd: int,                                  
+        size_rnd: int,                              # số lượng biểu đồ muốn tạo (18: muốn tạo 18 cái biểu đồ)                       
         figsize: tuple,                                 
-        rc_chart: tuple,                                
+        rc_chart: tuple,                            # số hàng cột trong 1 images ((3,3): tạo ra 1 ảnh bên trong có 9 buổi đồ 3x3)        
         save:bool = False,                              
-        save_path: str = "./backend/dataset/images"     
+        save_path: str = "backend/dataset/images"     
     ):
         users = np.random.choice(self.columns[1:], size=size_rnd, replace=False)                
 
@@ -149,13 +149,13 @@ class Visualization:
         save=False,
         save_path="./backend/dataset/images"
     ):
-        df = self.df.copy()
+        df: pd.DataFrame = self.df.copy()
 
         df["Unnamed: 0"] = pd.to_datetime(
             df["Unnamed: 0"]
         )
 
-        df["aggregate"] = df.iloc[:,1:].sum(axis=1)
+        df["aggregate"] = df.iloc[:,1:].sum(axis=1) # tổng điện năng của 370 người mỗi một khung giờ
 
         df["hour"] = df["Unnamed: 0"].dt.hour
         df["day_name"] = df["Unnamed: 0"].dt.day_name()
@@ -248,7 +248,7 @@ class Visualization:
         plt.close(fig)
 
 if __name__ == "__main__":
-    visual = Visualization()
+    visual = Visualization(dataset_path="./backend/dataset/LD2011_2014.txt")
     
     # 1. Gọi thử Time-pattern Heatmap
     visual.plot_time_pattern_heatmap(
