@@ -21,18 +21,25 @@ class Visualization:
         self.columns = self.df.columns
         self.rows = len(self.df)
 
-    def plot_chart(self, 
-        step:int,                                       
+    # biểu đồ đường mô tả sự biến thiên về mức sử dụng điện của các user
+    # dùng để xem mức phân bổ sử dụng điện của user
+    def dayly_load_chart(self,                                     
         images: int,                                    
         size_rnd: int,                              # số lượng biểu đồ muốn tạo (18: muốn tạo 18 cái biểu đồ)                       
-        figsize: tuple,                                 
+        space_chart: tuple,                         # khoảng cách của các biểu đồ trong cùng một page (w,h)        
         rc_chart: tuple,                            # số hàng cột trong 1 images ((3,3): tạo ra 1 ảnh bên trong có 9 buổi đồ 3x3)        
         save:bool = False,                              
         save_path: str = "backend/dataset/images"     
     ):
         users = np.random.choice(self.columns[1:], size=size_rnd, replace=False)                
 
-        sampled = self.df.iloc[::step]
+        daily_df = (
+            self.df
+            .set_index("Unnamed: 0")
+            .resample("5D")
+            .mean()
+            .reset_index()
+        )
 
         per_page = rc_chart[0]*rc_chart[1]
         for page in range(images):
@@ -40,34 +47,47 @@ class Visualization:
 
             fig, axes = plt.subplots(
                 rc_chart[0],rc_chart[1],
-                figsize=figsize
             )
             axes = axes.flatten()
 
             for i, user in enumerate(subset):
                 sns.lineplot(
-                    x=sampled["Unnamed: 0"], 
-                    y=sampled[user],
-                    ax=axes[i]
+                    x=daily_df["Unnamed: 0"], 
+                    y=daily_df[user],
+                    ax=axes[i],
+                    linewidth=0.5,
+                    color="black"
                 )
-                x = sampled["Unnamed: 0"]
+                x = daily_df["Unnamed: 0"]
 
                 axes[i].set_title(user)
                 axes[i].set_xlabel("")
                 axes[i].set_ylabel("")
                 axes[i].set_xticks([x.iloc[0], x.iloc[-1]])
+                axes[i].tick_params(
+                    axis="both",
+                    labelsize=5
+                )
+                axes[i].tick_params(
+                    axis="x",
+                    rotation=30
+                )
 
-            plt.tight_layout()
+            plt.subplots_adjust(
+                wspace=space_chart[0],
+                hspace=space_chart[1]
+            )
             if save:
                 os.makedirs(save_path, exist_ok=True)
                 plt.savefig(f"{save_path}/users_page_{page+1}.png", dpi=300, bbox_inches="tight")
-            plt.show()
+            else:
+                plt.show()
             plt.close(fig)
     
+    # biểu đồ đường xem sự biến thiên tổng lượng điện năng tiêu thụ trong 24h của 370 người
     def plot_aggregate_load_chart(
         self,
         size_rnd=9,                  
-        figsize=(14,8),
         rc_chart=(3,3),
         save=False,
         save_path="./backend/dataset/images"        
@@ -81,8 +101,7 @@ class Visualization:
         df["aggregate"] = df.iloc[:,1:].sum(axis=1)
 
         df["date"] = df["Unnamed: 0"].dt.date
-        df["hour"] = df["Unnamed: 0"].dt.hour + \
-                     df["Unnamed: 0"].dt.minute/60
+        df["hour"] = df["Unnamed: 0"].dt.hour + df["Unnamed: 0"].dt.minute/60 # để làm trúc X
 
         all_days = df["date"].unique()
 
@@ -93,15 +112,12 @@ class Visualization:
         )
 
         fig, axes = plt.subplots(
-            rc_chart[0],
-            rc_chart[1],
-            figsize=figsize
+            rc_chart[0],rc_chart[1],
         )
 
         axes = axes.flatten()
 
         for i, day in enumerate(random_days):
-
             day_data = df[
                 df["date"] == day
             ]
@@ -109,7 +125,8 @@ class Visualization:
             sns.lineplot(
                 x=day_data["hour"],
                 y=day_data["aggregate"],
-                ax=axes[i]
+                ax=axes[i],
+                color="black"
             )
 
             axes[i].set_title(str(day))
@@ -121,6 +138,10 @@ class Visualization:
 
             axes[i].set_xlabel("")
             axes[i].set_ylabel("")
+            axes[i].tick_params(
+                axis="both",
+                labelsize=5
+            )
 
         for j in range(len(random_days), len(axes)):
             axes[j].axis("off")
@@ -140,9 +161,11 @@ class Visualization:
                 bbox_inches="tight"
             )
 
-        plt.show()
+        else: 
+            plt.show()
         plt.close(fig)
 
+    # biểu đồ độ tương quan
     def plot_time_pattern_heatmap(
         self,
         figsize=(15, 8),
@@ -174,7 +197,7 @@ class Visualization:
 
         fig, ax = plt.subplots(figsize=figsize)
         sns.heatmap(
-            heatmap_data_diff, 
+            heatmap_data, 
             cmap='RdBu_r', 
             annot=False, 
             linewidths=.5, 
@@ -193,7 +216,7 @@ class Visualization:
         if save:
             os.makedirs(save_path, exist_ok=True)
             plt.savefig(
-                f"{save_path}/time_pattern_heatmap.png",
+                f"{save_path}/time_pattern_heatmap_original.png",
                 dpi=300,
                 bbox_inches="tight"
             )
@@ -249,6 +272,19 @@ class Visualization:
 
 if __name__ == "__main__":
     visual = Visualization(dataset_path="./backend/dataset/LD2011_2014.txt")
+    # visual.dayly_load_chart(
+    #     images=3,
+    #     size_rnd=27,
+    #     space_chart=(0.5,0.5),
+    #     rc_chart=(3,3),
+    #     save=True
+    # )
+
+    # visual.plot_aggregate_load_chart(
+    #     size_rnd=9,
+    #     rc_chart=(3,3),
+    #     save=True
+    # )
     
     # 1. Gọi thử Time-pattern Heatmap
     visual.plot_time_pattern_heatmap(
@@ -256,8 +292,8 @@ if __name__ == "__main__":
         save=True
     )
 
-    # 2. Gọi thử Histogram
-    visual.plot_histogram(
-        figsize=(12, 6),
-        save=True
-    )
+    # # 2. Gọi thử Histogram
+    # visual.plot_histogram(
+    #     figsize=(12, 6),
+    #     save=True
+    # )
