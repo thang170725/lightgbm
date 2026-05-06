@@ -4,3 +4,5 @@ backend/dataset/images
 **/__pycache__/
 *.py[cod]
 *$py.class
+backend/app/__pycache__
+backend/__pycache__
