@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import lightgbm as lgb
 from tqdm import tqdm
-
 from sklearn.metrics import (
     mean_absolute_error,
-    mean_squared_error
+    mean_squared_error,
+    r2_score
 )
 from backend.app.models.feature_builder import FeatureBuilder
 
@@ -16,7 +16,7 @@ class LightGBMTrainer:
         valid_path="backend/dataset/valid_ready.csv",
         test_path="backend/dataset/test_ready.csv"
     ):
-        print("Loading datasets...")
+        print("Loading datasets (train, valid, test)...")
 
         self.train = pd.read_csv(train_path)
         self.valid = pd.read_csv(valid_path)
@@ -69,7 +69,8 @@ class LightGBMTrainer:
             subsample=0.8,
             colsample_bytree=0.8,
             random_state=42,
-            n_jobs=-1
+            n_jobs=-1,
+            verbosity=-1
         )
 
         return model
@@ -84,6 +85,10 @@ class LightGBMTrainer:
         preds = np.expm1(preds)
 
         mae = mean_absolute_error(y_true, preds)
+        relative_mae = (
+        mae / np.mean(y_true)
+        ) * 100
+
         rmse = np.sqrt(
             mean_squared_error(
                 y_true,
@@ -97,10 +102,21 @@ class LightGBMTrainer:
                 )/y_true
             )
         ) * 100
+        r2 = r2_score(y_true, preds)
 
         print(f"MAE: {mae:.4f}")
+        print(f"Relative MAE: {relative_mae:.2f}%")
         print(f"RMSE: {rmse:.4f}")
         print(f"MAPE: {mape:.2f}%")
+        print(f"R2 SCORE: {r2:.2f}%")
+
+        return {
+            "mae": mae,
+            "relative_mae": relative_mae,
+            "mape": mape,
+            "rmse": rmse,
+            "r2": r2
+        }
 
     # train
     def train_model(self):
@@ -130,26 +146,22 @@ class LightGBMTrainer:
                 ],
                 eval_metric="l2",
                 callbacks=[
-                    lgb.log_evaluation(period=50)  # in log mỗi 50 vòng
+                    lgb.log_evaluation(period=50),  # in log mỗi 50 dòng,
+                    lgb.early_stopping(stopping_rounds=30)
                 ]
             )
 
-        print("\nPredicting...")
+        print(f"Best iteration: {model.best_iteration_}")
 
+        print("\nPredicting...")
         preds = model.predict(X_test)
 
         print("\n=== Test Metrics ===")
-
-        self.evaluate(y_test, preds)
+        evaluate = self.evaluate(y_test, preds)
 
         importance = pd.DataFrame({
-
-            "feature":
-            self.features,
-
-            "importance":
-            model.feature_importances_
-
+            "feature": self.features,
+            "importance": model.feature_importances_
         }).sort_values(
             "importance",
             ascending=False
@@ -157,7 +169,7 @@ class LightGBMTrainer:
 
         print("\nFeature importance:\n", importance)
 
-        return model
+        return model, evaluate
 
     # ==== predict new data ====
     def preprocess_input(self, input_dict):

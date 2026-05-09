@@ -22,8 +22,9 @@ manager = ModelManager()
 # load model 1 lần
 # model = trainer.train_model()
 # manager.save_model(model)
-model = manager.load_model()
-
+loader = manager.load_model()
+model = loader['model']
+evaluate = loader['evaluate']
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
@@ -53,4 +54,7 @@ async def predict(file: UploadFile = File(...)):
 
     result = result.where(pd.notnull(result), None)
 
-    return result.to_dict(orient="records")
+    return {
+        'result': result.to_dict(orient="records"),
+        'evaluate': evaluate
+    }

@@ -10,14 +10,18 @@ class ModelManager:
         # tạo folder nếu chưa có
         os.makedirs(self.model_dir, exist_ok=True)
 
-    # save model
+    # ====== save model =======
     def save_model(self,
         model,
-        name="lightgbm_model.pkl"
+        evaluate: dict,
+        save_path="lightgbm_model.pkl"
     ):
-        path = os.path.join(self.model_dir, name)
+        path = os.path.join(self.model_dir, save_path)
 
-        joblib.dump(model, path)
+        joblib.dump({
+            'model': model,
+            'evaluate': evaluate
+        }, path)
 
         print(f"\nModel saved to: {path}")
 
