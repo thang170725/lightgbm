@@ -1,4 +1,4 @@
-from backend.app.utils.preprocessor import DataChecker, Preprocessor, build_hourly_dataset
+from backend.app.utils.preprocessor import DataChecker, Preprocessor
 from backend.app.models.lightgbm import LightGBMTrainer
 from backend.app.models.model_manager import ModelManager
 
@@ -15,7 +15,6 @@ from backend.app.models.model_manager import ModelManager
 
 # 4. trainer
 trainer = LightGBMTrainer()
-
 model, evaluate = trainer.train_model()
 
 # 5. load model
