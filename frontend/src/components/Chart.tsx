@@ -26,7 +26,7 @@ export default function Chart({ data }: { data: DataPoint[] }) {
     const pad = (maxV - minV) * 0.08 || 0.1;
 
     return (
-        <div className="flex h-[420px] flex-col rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_4px_24px_-4px_rgba(15,23,42,0.08)] sm:h-[460px] sm:p-6">
+        <div className="flex h-105 flex-col rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_4px_24px_-4px_rgba(15,23,42,0.08)] sm:h-[460px] sm:p-6">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
                 <div>
                     <h2 className="text-lg font-semibold tracking-tight text-slate-900">

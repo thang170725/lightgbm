@@ -1,15 +1,20 @@
-import axios from "axios";
-
 export async function predictFile(file: File) {
     const formData = new FormData();
 
     formData.append("file", file);
 
-    const res = await axios.post(
-        "http://localhost:8000/predict",
-        formData
-    );
+    const res = await fetch("http://localhost:8000/predict", {
+        method: "POST",
+        body: formData
+    });
 
-    console.log(res.data)
-    return res.data
+    const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error("lỗi load file")
+    }
+
+    console.log(data);
+
+    return data;
 }
