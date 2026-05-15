@@ -18,7 +18,7 @@ app.add_middleware(
 trainer = LightGBMTrainer()
 manager = ModelManager()
 # load model 1 lần
-loader = manager.load_model()
+loader = manager.load_model(name='lightgbm_model1.pkl')
 model = loader['model']
 evaluate = loader['evaluate']
 

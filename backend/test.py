@@ -14,15 +14,15 @@ from backend.app.models.model_manager import ModelManager
 # preprocessor.run_pipeline()
 
 # 4. trainer
-trainer = LightGBMTrainer()
-model, evaluate = trainer.train_model()
+# trainer = LightGBMTrainer()
+# model, evaluate = trainer.train_model()
 
-# 5. load model
+# # 5. load model
 model_manager = ModelManager(model_dir='backend/models')
-save = model_manager.save_model(
-    model,
-    evaluate,
-    save_path='lightgbm_model.pkl'
-)
-loader = model_manager.load_model(name='lightgbm_model.pkl')
+# save = model_manager.save_model(
+#     model,
+#     evaluate,
+#     save_path='lightgbm_model1.pkl'
+# )
+loader = model_manager.load_model(name='lightgbm_model1.pkl')
 print(loader)

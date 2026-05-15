@@ -27,7 +27,7 @@ debug_df(df, "RAW DATA")
 
 # ==== chọn 1 user ====
 
-user_col = df.columns[1]
+user_col = df.columns[200]
 
 user_df = df[["time", user_col]].rename(
 columns={user_col: "value_kw"}
@@ -91,7 +91,7 @@ debug_df(user_df, "FINAL DATA (8 DAYS)")
 
 # ==== save ====
 
-output_path = "backend/dataset/user_data.csv"
+output_path = "backend/dataset/user_data_199.csv"
 
 user_df.to_csv(output_path, index=False)
 

@@ -7,14 +7,15 @@ import pandas as pd
 
 # 1. train model
 trainer = LightGBMTrainer()
-model = trainer.train_model()
+# model = trainer.train_model()
 
-# 2. save model
+# # 2. save model
 manager = ModelManager()
-manager.save_model(model)
+# manager.save_model(model)
 
 # 3. load model
 loaded_model = manager.load_model()
+model = loaded_model["model"]
 
 # ==== 4. load user data ====
 
@@ -45,7 +46,7 @@ start_time = user_df["time"].iloc[-1] + pd.Timedelta(hours=1)
 future_steps = 24  # dự đoán 24 giờ tới
 
 forecast_df = trainer.forecast_future(
-    model=loaded_model,
+    model=model,
     history=history,
     start_time=start_time,
     steps=future_steps
