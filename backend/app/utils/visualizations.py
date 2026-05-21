@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
-class Visualization:
+class VisualizationOriginalDataset:
     def __init__(self, dataset_path: str = None):
         if dataset_path is None:
             current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -35,7 +35,7 @@ class Visualization:
 
         daily_df = (
             self.df
-            .set_index("Unnamed: 0")
+            .set_index("timestamp")
             .resample("5D")
             .mean()
             .reset_index()
@@ -52,13 +52,13 @@ class Visualization:
 
             for i, user in enumerate(subset):
                 sns.lineplot(
-                    x=daily_df["Unnamed: 0"], 
+                    x=daily_df["timestamp"], 
                     y=daily_df[user],
                     ax=axes[i],
                     linewidth=0.5,
                     color="black"
                 )
-                x = daily_df["Unnamed: 0"]
+                x = daily_df["timestamp"]
 
                 axes[i].set_title(user)
                 axes[i].set_xlabel("")
@@ -95,7 +95,7 @@ class Visualization:
         df = self.df.copy()
 
         df["Unnamed: 0"] = pd.to_datetime(
-            df["Unnamed: 0"]
+            df["timestamp"]
         )
 
         df["aggregate"] = df.iloc[:,1:].sum(axis=1)
@@ -175,7 +175,7 @@ class Visualization:
         df: pd.DataFrame = self.df.copy()
 
         df["Unnamed: 0"] = pd.to_datetime(
-            df["Unnamed: 0"]
+            df["timestamp"]
         )
 
         df["aggregate"] = df.iloc[:,1:].sum(axis=1) # tổng điện năng của 370 người mỗi một khung giờ
@@ -271,29 +271,29 @@ class Visualization:
         plt.close(fig)
 
 if __name__ == "__main__":
-    visual = Visualization(dataset_path="./backend/dataset/LD2011_2014.txt")
-    # visual.dayly_load_chart(
-    #     images=3,
-    #     size_rnd=27,
-    #     space_chart=(0.5,0.5),
-    #     rc_chart=(3,3),
-    #     save=True
-    # )
+    visual = Visualization(dataset_path="./backend/dataset/hourly_electricity_filtered.csv")
+    visual.dayly_load_chart(
+        images=3,
+        size_rnd=27,
+        space_chart=(0.5,0.5),
+        rc_chart=(3,3),
+        save=False
+    )
 
-    # visual.plot_aggregate_load_chart(
-    #     size_rnd=9,
-    #     rc_chart=(3,3),
-    #     save=True
-    # )
+    visual.plot_aggregate_load_chart(
+        size_rnd=9,
+        rc_chart=(3,3),
+        save=False
+    )
     
     # 1. Gọi thử Time-pattern Heatmap
     visual.plot_time_pattern_heatmap(
         figsize=(15, 8),
-        save=True
+        save=False
     )
 
     # # 2. Gọi thử Histogram
-    # visual.plot_histogram(
-    #     figsize=(12, 6),
-    #     save=True
-    # )
+    visual.plot_histogram(
+        figsize=(12, 6),
+        save=False
+    )

@@ -18,42 +18,49 @@ app.add_middleware(
 trainer = LightGBMTrainer()
 manager = ModelManager()
 # load model 1 lần
-loader = manager.load_model()
+loader = manager.load_model(name="lightgbm_model_v2.pkl")
 model = loader['model']
 evaluate = loader['evaluate']
 
 # ==== API post ====
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    contents = await file.read()
+    try:
+        contents = await file.read()
+        
+        # đọc csv upload
+        df = pd.read_csv(
+            io.StringIO(contents.decode("utf-8")), 
+            parse_dates=["time"]
+        )
+        df = df.sort_values("time")
 
-    df = pd.read_csv(
-        io.StringIO(contents.decode("utf-8")), 
-        parse_dates=["time"]
-    )
-    df = df.sort_values("time")
+        # lấy history
+        history = df["value"].tolist()
 
-    history = df["value"].tolist()
+        if len(history) < 168:
+            return {"error": "Need at least 168 rows"}
 
-    if len(history) < 168:
-        return {"error": "Need at least 168 rows"}
+        start_time = df["time"].iloc[-1] + pd.Timedelta(hours=1) # để tạo timestamp mới nhất và cộng thêm 1 giờ để bắt đầu dự đoán
 
-    start_time = df["time"].iloc[-1] + pd.Timedelta(hours=1) # để tạo timestamp mới nhất và cộng thêm 1 giờ để bắt đầu dự đoán
+        forecast_df = trainer.forecast_future(
+            model=model,
+            history=history,
+            start_time=start_time,
+            steps=24
+        )
 
-    forecast_df = trainer.forecast_future(
-        model=model,
-        history=history,
-        start_time=start_time,
-        steps=24
-    )
+        # === convert data ===
+        forecast_df = forecast_df.rename(columns={"prediction": "value"})
 
-    # === convert data ===
-    forecast_df = forecast_df.rename(columns={"prediction": "value"})
+        result = forecast_df[["time", "value"]].copy()
+        result = result.where(pd.notnull(result), None)
 
-    result = forecast_df[["time", "value"]].copy()
-    result = result.where(pd.notnull(result), None)
-
-    return {
-        'result': result.to_dict(orient="records"),
-        'evaluate': evaluate
-    }
+        return {
+            'result': result.to_dict(orient="records"),
+            'evaluate': evaluate
+        }
+    except Exception as e:
+        return {
+            "error": str(e)
+        }

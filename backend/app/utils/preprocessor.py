@@ -1,124 +1,9 @@
 import pandas as pd
 import numpy as np
 
-# === class check data ===
-# use this class before running class Preprocessor 
-class DataChecker:
-    """
-    Check chất lượng dataset điện năng trước khi train model.
-    Không modify data, chỉ phân tích.
-    """
-    def __init__(self, dataset_path:str="backend/dataset/LD2011_2014.txt"):
-        self.df = pd.read_csv(
-            dataset_path,
-            sep=';',
-            decimal=',',
-            parse_dates=[0]
-        )
-    
-    # 1. Tổng quan về dataset
-    def overview(self):
-        print("\n=== DATA OVERVIEW ===")
-        print("Shape:", self.df.shape)
-        print("Rows: ", self.df.shape[0])
-        print("Columns:", self.df.shape[1])
-    
-    # 2. Missing values
-    def check_missing(self):
-        print("\n=== MISSING VALUES ===")
-
-        missing = self.df.isna().sum().sort_values(ascending=False)
-        missing = missing[missing > 0]
-
-        if len(missing) == 0:
-            print("No missing values.")
-        else:
-            print(missing)
-    
-       # -------------------------
-    
-    # 3. Zero ratio per client
-    def check_zero_ratio(self):
-        print("\n=== ZERO RATIO PER CLIENT ===")
-
-        zero_ratio = (self.df == 0).mean().sort_values(ascending=False)
-
-        print("Top 10 clients with most zeros:")
-        print(zero_ratio.head(10))
-
-        print("\nMost active clients:")
-        print(zero_ratio.tail(10))
-    
-    # 4. kiểm tra chuỗi 0 liên tục
-    def max_consecutive_zeros(self):
-        '''
-        Cái này quan trọng hơn count đơn thuần.
-        Ví dụ:
-            1-2 điểm zero lẻ tẻ → có thể bình thường
-            500 bước liên tục zero → bất thường.
-        '''
-        print("\n=== Check for a string of consecutive zeros ===")
-        for col in self.df.columns[:20]:
-            groups = (self.df[col] != 0).cumsum()
-
-            print(col, self.df[col].eq(0).groupby(groups).sum().max())
-
-    # 5. Detect "inactive period"
-    def detect_activation_time(self):
-        print("\n=== FIRST NON-ZERO (CLIENT ACTIVATION TIME) ===")
-
-        activation = {}
-
-        for col in self.df.columns:
-            series = self.df[col]
-
-            if (series != 0).sum() == 0:
-                activation[col] = None
-                continue
-
-            first_active = series.ne(0).idxmax()
-            activation[col] = first_active
-
-        activation_series = pd.Series(activation).dropna()
-
-        print("Sample activation times:")
-        print(activation_series.head(10))
-
-    # 6. Sparsity analysis
-    def sparsity_report(self):
-        print("\n=== SPARSITY REPORT ===")
-
-        total_values = self.df.size
-        zero_values = (self.df == 0).sum().sum()
-
-        sparsity = zero_values / total_values
-
-        print(f"Total values: {total_values}")
-        print(f"Zero values: {zero_values}")
-        print(f"Sparsity: {sparsity:.4f}")
-
-    # 7. Time frequency check
-    def check_time_frequency(self):
-        print("\n=== TIME FREQUENCY CHECK ===")
-
-        diff = self.df.index.to_series().diff().value_counts()
-
-        print(diff.head(10))
-
-    # RUN ALL
-    def run_all(self):
-        self.overview()
-        self.check_missing()
-        self.check_zero_ratio()
-        self.max_consecutive_zeros()
-        self.detect_activation_time()
-        self.sparsity_report()
-        self.check_time_frequency()
-
-# sau khi tối ưu dataset thì dùng class này để tiền xử lý
+# ===== Sau khi tối ưu dataset thì dùng class này để tiền xử lý =====
 class Preprocessor:
-    def __init__(
-        self,
+    def __init__(self,
         dataset_path="backend/dataset/hourly_electricity_filtered.csv"
     ):
         self.df = pd.read_csv(
@@ -198,45 +83,71 @@ class Preprocessor:
 
     # 3. lag features
     # thêm các đặc trựng về lịch sử 
-    def build_lag_features(self,
-        df
-    ):
-        g = df.groupby(
-            "client_id",
-            observed=True
-        )["target_value"]
+    # def build_lag_features(self,
+    #     df
+    # ):
+    #     g = df.groupby(
+    #         "client_id",
+    #         observed=True
+    #     )["target_value"]
 
-        df["lag_24h"] = (
-            g.shift(24)
-            .astype("float32")
-        )
+    #     df["lag_24h"] = (
+    #         g.shift(24)
+    #         .astype("float32")
+    #     )
 
-        df["lag_7d"] = (
-            g.shift(168)
-            .astype("float32")
-        )
+    #     df["lag_7d"] = (
+    #         g.shift(168)
+    #         .astype("float32")
+    #     )
 
+    #     df["rolling_mean_24h"] = (
+    #         g.shift(1)
+    #          .rolling(
+    #             24,
+    #             min_periods=24
+    #          )
+    #          .mean()
+    #          .astype(
+    #             "float32"
+    #          )
+    #     )
+
+    #     df.dropna(
+    #         inplace=True
+    #     )
+
+    #     print(
+    #         "after lag:",
+    #         df.shape
+    #     )
+
+    #     return df
+
+    def build_lag_features(self, df):
+        g = df.groupby("client_id", observed=True)["target_value"]
+
+        # === Lag features hiện có ===
+        df["lag_24h"] = g.shift(24).astype("float32")
+        df["lag_7d"]  = g.shift(168).astype("float32")
+
+        # === THÊM MỚI ===
+        df["lag_48h"] = g.shift(48).astype("float32")   # hôm kia cùng giờ
+        df["lag_72h"] = g.shift(72).astype("float32")   # 3 ngày trước
+
+        # Rolling means
         df["rolling_mean_24h"] = (
-            g.shift(1)
-             .rolling(
-                24,
-                min_periods=24
-             )
-             .mean()
-             .astype(
-                "float32"
-             )
+            g.shift(1).rolling(24, min_periods=24).mean().astype("float32")
+        )
+        df["rolling_mean_7d"] = (                        # THÊM MỚI - trend tuần
+            g.shift(1).rolling(168, min_periods=168).mean().astype("float32")
+        )
+        df["rolling_std_24h"] = (                        # THÊM MỚI - độ biến động
+            g.shift(1).rolling(24, min_periods=24).std().astype("float32")
         )
 
-        df.dropna(
-            inplace=True
-        )
-
-        print(
-            "after lag:",
-            df.shape
-        )
-
+        df.dropna(inplace=True)
+        print("after lag:", df.shape)
         return df
 
     # 4. target transform
@@ -295,17 +206,17 @@ class Preprocessor:
         base_path="backend/dataset/"
     ):
         train.to_csv(
-            f"{base_path}train_ready.csv",
+            f"{base_path}train_ready3.csv",
             index=False
         )
 
         valid.to_csv(
-            f"{base_path}valid_ready.csv",
+            f"{base_path}valid_ready3.csv",
             index=False
         )
 
         test.to_csv(
-            f"{base_path}test_ready.csv",
+            f"{base_path}test_ready3.csv",
             index=False
         )
 
@@ -334,24 +245,52 @@ class Preprocessor:
         )
 
     # model columns
+    # @staticmethod
+    # def feature_columns():
+    #     return [
+    #         "hour_sin",
+    #         "hour_cos",
+    #         "day_of_week",
+
+    #         "lag_24h",
+    #         "lag_7d",
+
+    #         "rolling_mean_24h"
+    #     ]
+    # Preprocessor
     @staticmethod
     def feature_columns():
         return [
-            "hour_sin",
-            "hour_cos",
-            "day_of_week",
-
-            "lag_24h",
-            "lag_7d",
-
-            "rolling_mean_24h"
+            "hour_sin", "hour_cos", "day_of_week",
+            "lag_24h", "lag_48h", "lag_72h", "lag_7d",
+            "rolling_mean_24h", "rolling_mean_7d", "rolling_std_24h"
         ]
+    # 4. clip outliers (THÊM MỚI - trước transform_target)
+    def clip_outliers(self, df):
+        # Tính threshold CHỈ từ train portion (trước 2014-09-30)
+        train_mask = df["timestamp"] <= "2014-09-30"
+        threshold = df.loc[train_mask, "target_value"].quantile(0.995)
 
-    # full pipeline
+        print(f"Clip threshold (P99.5 of train): {threshold:.2f}")
+        print(f"Điểm bị clip: {(df['target_value'] > threshold).sum()}")
+
+        df["target_value"] = df["target_value"].clip(upper=threshold)
+        return df
+
+    # 4. target transform (giữ nguyên, chỉ đổi số thứ tự thành 5)
+    def transform_target(self, df):
+        df["target_value"] = (
+            np.log1p(df["target_value"])
+            .astype("float32")
+        )
+        return df
+
+    # full pipeline (cập nhật thêm bước clip)
     def run_pipeline(self):
         df = self.from_wide_to_long()
         df = self.build_time_features(df)
         df = self.build_lag_features(df)
+        df = self.clip_outliers(df)   # << THÊM VÀO ĐÂY
         df = self.transform_target(df)
 
         print("final:", df.shape)
@@ -359,8 +298,76 @@ class Preprocessor:
         train, valid, test = self.split_data(df)
         self.save_splits(train, valid, test)
 
-        return ( train, valid, test )
+        return (train, valid, test)
 
+
+    # full pipeline
+    # def run_pipeline(self):
+    #     df = self.from_wide_to_long()
+    #     df = self.build_time_features(df)
+    #     df = self.build_lag_features(df)
+    #     df = self.transform_target(df)
+
+    #     print("final:", df.shape)
+
+    #     train, valid, test = self.split_data(df)
+    #     self.save_splits(train, valid, test)
+
+    #     return ( train, valid, test )
+
+class CheckerVersion2:
+    def __init__(self, dataset_path: str):
+        self.df = pd.read_csv(dataset_path)
+    
+    def overview(self):
+        y = np.expm1(self.df["target_value"])
+        print(y.describe())
+        print(f"\nP95: {y.quantile(0.95):.1f}")
+        print(f"P99: {y.quantile(0.99):.1f}")
+        print(f"Max: {y.max():.1f}")
+        print(f"\nSố điểm > P99: {(y > y.quantile(0.99)).sum()}")
+
+        
 if __name__ == "__main__":
-    preprocessor = Preprocessor(dataset_path="backend/dataset/hourly_electricity_filtered.csv")
+    preprocessor = Preprocessor(dataset_path="backend/dataset/hourly_electricity_filtered_v2.csv")
     preprocessor.run_pipeline()
+
+    # === checker version 2 ====
+    # checker = CheckerVersion2(dataset_path="backend/dataset/train_ready.csv")
+    # checker.overview()
+
+    # import pandas as pd
+    # import numpy as np
+
+    # train = pd.read_csv("backend/dataset/train_ready.csv")
+    # y = np.expm1(train["target_value"])
+
+    # # Xem phân phối theo bucket
+    # buckets = [0, 100, 200, 500, 1000, 2000, 5000, 10000]
+    # for i in range(len(buckets)-1):
+    #     count = ((y >= buckets[i]) & (y < buckets[i+1])).sum()
+    #     pct = count / len(y) * 100
+    #     print(f"{buckets[i]:>6} - {buckets[i+1]:>6}: {count:>8} điểm ({pct:.1f}%)")
+
+    # # Xem outlier tập trung vào giờ/ngày nào
+    # train["value_orig"] = y
+    # top1pct = train[y > y.quantile(0.99)]
+    # print(f"\nOutlier theo day_of_week:\n{top1pct['day_of_week'].value_counts().sort_index()}")
+
+    # Nếu có cột time gốc thì thêm:
+    # print(f"\nOutlier theo hour:\n{top1pct['hour'].value_counts().sort_index()}")
+
+    # import pandas as pd
+    # import numpy as np
+
+    # train = pd.read_csv("backend/dataset/train_ready.csv")
+    # y = np.expm1(train["target_value"])
+
+    # # So sánh các ngưỡng clip
+    # for p in [99, 99.5, 99.9]:
+    #     threshold = y.quantile(p/100)
+    #     clipped = y.clip(upper=threshold)
+    #     n_affected = (y > threshold).sum()
+    #     print(f"Clip P{p}: threshold={threshold:.1f}, "
+    #           f"affected={n_affected} ({n_affected/len(y)*100:.2f}%), "
+    #           f"new_mean={clipped.mean():.1f}, new_std={clipped.std():.1f}")
