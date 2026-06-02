@@ -1,7 +1,7 @@
 # ==== main pipeline (predict from user file) ====
 
-from backend.app.models.lightgbm import LightGBMTrainer
-from backend.app.models.model_manager import ModelManager
+from app.models.lightgbm import LightGBMTrainer
+from app.models.model_manager import ModelManager
 
 import pandas as pd
 

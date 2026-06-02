@@ -3,7 +3,7 @@ import joblib
 
 class ModelManager:
     def __init__(self,
-        model_dir="backend/models"
+        model_dir="models"
     ):
         self.model_dir = model_dir
 

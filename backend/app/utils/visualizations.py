@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+from pandas.plotting import autocorrelation_plot
 
-class VisualizationOriginalDataset:
+# ==== Class chuyên biệt để vẽ biểu đồ =====
+class VisualDatasetTXTV1:
     def __init__(self, dataset_path: str = None):
         if dataset_path is None:
             current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,7 +23,8 @@ class VisualizationOriginalDataset:
         self.columns = self.df.columns
         self.rows = len(self.df)
 
-    # biểu đồ đường mô tả sự biến thiên về mức sử dụng điện của các user
+    # ====== Line plot =====
+    # ===== 1. biểu đồ đường mô tả sự biến thiên về mức sử dụng điện của các user =====
     # dùng để xem mức phân bổ sử dụng điện của user
     def dayly_load_chart(self,                                     
         images: int,                                    
@@ -84,7 +87,7 @@ class VisualizationOriginalDataset:
                 plt.show()
             plt.close(fig)
     
-    # biểu đồ đường xem sự biến thiên tổng lượng điện năng tiêu thụ trong 24h của 370 người
+    # ====== 2. biểu đồ đường xem sự biến thiên tổng lượng điện năng tiêu thụ trong 24h của 370 người ======
     def plot_aggregate_load_chart(
         self,
         size_rnd=9,                  
@@ -165,36 +168,45 @@ class VisualizationOriginalDataset:
             plt.show()
         plt.close(fig)
 
-    # biểu đồ độ tương quan
-    def plot_time_pattern_heatmap(
-        self,
-        figsize=(15, 8),
+    # ======= 3. Heatmap (biểu đồ độ tương quan)
+    # heatmap trung bình lượng điện tiêu thụ tại mỗi giờ từng ngày trong tuần
+    def plot_time_pattern_heatmap(self,
+        figsize=(15, 8),                        # kích thước 1 biểu đồ trên window
         save=False,
         save_path="./backend/dataset/images"
     ):
+        # 1. copy data tránh sửa trên df gốc
         df: pd.DataFrame = self.df.copy()
+        # print(df.head())
 
-        df["Unnamed: 0"] = pd.to_datetime(
-            df["timestamp"]
-        )
+        # 2. đổi kiểu dữ liệu & thêm đặc trưng
+        df["Unnamed: 0"] = pd.to_datetime(df["Unnamed: 0"])
 
         df["aggregate"] = df.iloc[:,1:].sum(axis=1) # tổng điện năng của 370 người mỗi một khung giờ
-
         df["hour"] = df["Unnamed: 0"].dt.hour
         df["day_name"] = df["Unnamed: 0"].dt.day_name()
         df["day_of_week"] = df["Unnamed: 0"].dt.dayofweek
+        print(df.head())
 
-        pivot_df = df.groupby(['day_name', 'day_of_week', 'hour'])['aggregate'].mean().reset_index()
+        # 3. tính trung bình lượng điện năng
+        pivot_df = df.groupby(['day_name', 'day_of_week', 'hour'])['aggregate'].mean().reset_index() # có cần phải chi 4 chỗ này không vì đơn vị phải dùng Kwh
+        print(pivot_df.head())
 
+        # 4. xoay dữ liệu từ dạng dài thành dạng rộng
+        # bảng lưu trùng bình lượng điện năng tiêu thụ trong mỗi giờ từ thứ 2 -> cn
         heatmap_data = pivot_df.pivot(index='day_name', columns='hour', values='aggregate')
+        print(heatmap_data.head()) 
 
+        # 5. tính trung bình lượng điện năng của 0 -> 24
         diff = heatmap_data.mean()
-        heatmap_data_diff = heatmap_data - diff
+        heatmap_data_diff = heatmap_data - diff # xem có cao hơn hay nhỏ hơn giá trị mốc (diff) - giá trị trung bình
 
+        # 6. cấu hình lại để chuẩn bị vẽ lên đồ thị
         days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         days_order = [day for day in days_order if day in heatmap_data.index]
-        heatmap_data_diff = heatmap_data_diff.reindex(days_order)
+        heatmap_data_diff = heatmap_data_diff.reindex(days_order) # cái này chx học
 
+        # 7. vẽ đồ thị
         fig, ax = plt.subplots(figsize=figsize)
         sns.heatmap(
             heatmap_data, 
@@ -204,15 +216,13 @@ class VisualizationOriginalDataset:
             cbar_kws={'label': 'Difference from Average Load'},
             ax=ax
         )
-
-        ax.set_title('Time-Pattern Heatmap of Aggregate Load', fontsize=16, pad=20)
+        ax.set_title('Time-Pattern Heatmap Plot of Aggregate Load', fontsize=16, pad=20)
         ax.set_xlabel('Hour of Day (0-23)', fontsize=12)
-        ax.set_ylabel('Day of Week', fontsize=12)
-        
+        ax.set_ylabel('Day of Week', fontsize=12)   
         plt.yticks(rotation=0)
-        
         plt.tight_layout()
 
+        # 8. lưu đồ thị
         if save:
             os.makedirs(save_path, exist_ok=True)
             plt.savefig(
@@ -224,8 +234,8 @@ class VisualizationOriginalDataset:
         plt.show()
         plt.close(fig)
 
-    def plot_histogram(
-        self,
+    # ====== 4. Histogram tổng lượng điện năng tiêu thụ từng khoảng =====
+    def plot_histogram(self,
         figsize=(12, 6),
         save=False,
         save_path="./backend/dataset/images"
@@ -269,31 +279,395 @@ class VisualizationOriginalDataset:
 
         plt.show()
         plt.close(fig)
+    
+    # ===== helper random users =====
+    def get_random_users_data(self, size_rnd=9):
+
+        df = self.df.copy()
+
+        if "timestamp" not in df.columns:
+            df.rename(
+                columns={"Unnamed: 0": "timestamp"},
+                inplace=True
+            )
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+        users = [
+            col for col in df.columns
+            if col != "timestamp"
+        ]
+
+        random_users = np.random.choice(
+            users,
+            size=size_rnd,
+            replace=False
+        )
+
+        cols = ["timestamp"] + list(random_users)
+
+        return df[cols], random_users
+
+    # ====== 5. Boxplot random users ======
+    # dùng để xem phân bố lượng điện tiêu thụ của các user
+    def plot_random_users_boxplot(self,
+        size_rnd=9,
+        figsize=(14, 8),
+        save=False,
+        save_path="./backend/dataset/images",
+        show=True
+    ):
+
+        df_users, random_users = self.get_random_users_data(size_rnd)
+
+        # chuyển dữ liệu wide -> long
+        df_melted = pd.melt(
+            df_users,
+            id_vars=["timestamp"],
+            value_vars=random_users,
+            var_name="customer",
+            value_name="load"
+        )
+
+        fig, ax = plt.subplots(figsize=figsize)
+
+        sns.boxplot(
+            data=df_melted,
+            x="customer",
+            y="load",
+            ax=ax,
+            palette="Set3",
+            hue="customer",
+            legend=False
+        )
+
+        ax.set_xlabel("")
+        ax.set_ylabel("Điện năng tiêu thụ")
+
+        plt.xticks(rotation=45)
+
+        plt.tight_layout()
+
+        if save:
+            os.makedirs(save_path, exist_ok=True)
+
+            plt.savefig(
+                f"{save_path}/users_boxplot_random.png",
+                dpi=300,
+                bbox_inches="tight"
+            )
+
+        if show:
+            plt.show()
+
+        plt.close(fig)
+
+    # ====== 6. ACF random users ======
+    # dùng để xem tính chu kỳ / seasonal của dữ liệu điện năng
+    def plot_random_users_acf(self,
+        size_rnd=9,
+        figsize=(16, 12),
+        rc_chart=(3, 3),
+        save=False,
+        save_path="./backend/dataset/images",
+        show=True,
+        resample_daily=True
+    ):
+
+        df_users, random_users = self.get_random_users_data(size_rnd)
+
+        # resample theo ngày để biểu đồ dễ nhìn hơn
+        if resample_daily:
+
+            df_users.set_index(
+                "timestamp",
+                inplace=True
+            )
+
+            df_plot = df_users.resample("D").sum()
+
+        else:
+
+            df_plot = df_users.set_index("timestamp")
+
+        fig, axes = plt.subplots(
+            rc_chart[0],
+            rc_chart[1],
+            figsize=figsize
+        )
+
+        axes = axes.flatten()
+
+        for i, user in enumerate(random_users):
+
+            if i < len(axes):
+
+                autocorrelation_plot(
+                    df_plot[user],
+                    ax=axes[i]
+                )
+
+                axes[i].set_title(f"Khách hàng: {user}")
+
+                axes[i].set_xlabel("Độ trễ (Lag)")
+                axes[i].set_ylabel("Hệ số ACF")
+
+        # tắt subplot thừa
+        for j in range(len(random_users), len(axes)):
+            axes[j].axis("off")
+
+        plt.suptitle(
+            "Biểu đồ ACF",
+            fontsize=18
+        )
+
+        plt.tight_layout()
+
+        if save:
+
+            os.makedirs(save_path, exist_ok=True)
+
+            plt.savefig(
+                f"{save_path}/users_acf_random.png",
+                dpi=300,
+                bbox_inches="tight"
+            )
+
+        if show:
+            plt.show()
+
+        plt.close(fig)
+
+    # ====== 7. Monthly Boxplot ======
+    # boxplot theo tháng của nhiều user
+    def plot_monthly_boxplot(self,
+        size_rnd=9,
+        figsize=(16, 12),
+        rc_chart=(3, 3),
+        save=False,
+        save_path="./backend/dataset/images",
+        show=True
+    ):
+
+        df = self.df.copy()
+
+        if "timestamp" not in df.columns:
+            df.rename(
+                columns={"Unnamed: 0": "timestamp"},
+                inplace=True
+            )
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+        users = [
+            col for col in df.columns
+            if col != "timestamp"
+        ]
+
+        random_users = np.random.choice(
+            users,
+            size=size_rnd,
+            replace=False
+        )
+
+        # lấy timestamp + user
+        df_selected = df[
+            ["timestamp"] + list(random_users)
+        ].copy()
+
+        # resample theo ngày
+        df_selected.set_index(
+            "timestamp",
+            inplace=True
+        )
+
+        df_daily = (
+            df_selected
+            .resample("D")
+            .sum()
+            .reset_index()
+        )
+
+        # thêm cột month
+        df_daily["month"] = (
+            df_daily["timestamp"]
+            .dt.month
+        )
+
+        fig, axes = plt.subplots(
+            rc_chart[0],
+            rc_chart[1],
+            figsize=figsize
+        )
+
+        axes = axes.flatten()
+
+        for i, user in enumerate(random_users):
+
+            sns.boxplot(
+                data=df_daily,
+                x="month",
+                y=user,
+                ax=axes[i],
+                palette="Set3",
+                hue="month",
+                legend=False
+            )
+
+            axes[i].set_title(user)
+
+            axes[i].set_xlabel("Tháng")
+            axes[i].set_ylabel("Tổng tiêu thụ")
+
+        # tắt subplot thừa
+        for j in range(len(random_users), len(axes)):
+            axes[j].axis("off")
+
+        plt.suptitle(
+            "Monthly Boxplot",
+            fontsize=16
+        )
+
+        plt.tight_layout()
+
+        if save:
+
+            os.makedirs(save_path, exist_ok=True)
+
+            plt.savefig(
+                f"{save_path}/monthly_boxplot.png",
+                dpi=300,
+                bbox_inches="tight"
+            )
+
+        if show:
+            plt.show()
+
+        plt.close(fig)
+
+    # ====== 8. Monthly ACF ======
+    # ACF theo tháng để xem tính chu kỳ dài hạn
+    def plot_monthly_acf(self,
+        size_rnd=9,
+        figsize=(16, 12),
+        rc_chart=(3, 3),
+        save=False,
+        save_path="./backend/dataset/images",
+        show=True
+    ):
+
+        df = self.df.copy()
+
+        if "timestamp" not in df.columns:
+            df.rename(
+                columns={"Unnamed: 0": "timestamp"},
+                inplace=True
+            )
+
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+
+        users = [
+            col for col in df.columns
+            if col != "timestamp"
+        ]
+
+        random_users = np.random.choice(
+            users,
+            size=size_rnd,
+            replace=False
+        )
+
+        df_selected = df[
+            ["timestamp"] + list(random_users)
+        ].copy()
+
+        # resample theo tháng
+        df_selected.set_index(
+            "timestamp",
+            inplace=True
+        )
+
+        df_monthly = (
+            df_selected
+            .resample("ME")
+            .sum()
+        )
+
+        fig, axes = plt.subplots(
+            rc_chart[0],
+            rc_chart[1],
+            figsize=figsize
+        )
+
+        axes = axes.flatten()
+
+        for i, user in enumerate(random_users):
+
+            autocorrelation_plot(
+                df_monthly[user],
+                ax=axes[i]
+            )
+
+            axes[i].set_title(user)
+
+            axes[i].set_xlabel("Độ trễ")
+            axes[i].set_ylabel("Hệ số ACF")
+
+        # tắt subplot thừa
+        for j in range(len(random_users), len(axes)):
+            axes[j].axis("off")
+
+        plt.suptitle(
+            "Monthly ACF",
+            fontsize=16
+        )
+
+        plt.tight_layout()
+
+        if save:
+
+            os.makedirs(save_path, exist_ok=True)
+
+            plt.savefig(
+                f"{save_path}/monthly_acf.png",
+                dpi=300,
+                bbox_inches="tight"
+            )
+
+        if show:
+            plt.show()
+
+        plt.close(fig)
 
 if __name__ == "__main__":
-    visual = Visualization(dataset_path="./backend/dataset/hourly_electricity_filtered.csv")
-    visual.dayly_load_chart(
-        images=3,
-        size_rnd=27,
-        space_chart=(0.5,0.5),
-        rc_chart=(3,3),
-        save=False
-    )
+    visual = VisualDatasetTXTV1(dataset_path="backend/dataset/LD2011_2014.txt")
+    # visual.dayly_load_chart(
+    #     images=3,
+    #     size_rnd=27,
+    #     space_chart=(0.5,0.5),
+    #     rc_chart=(3,3),
+    #     save=False
+    # )
 
-    visual.plot_aggregate_load_chart(
-        size_rnd=9,
-        rc_chart=(3,3),
-        save=False
-    )
+    # visual.plot_aggregate_load_chart(
+    #     size_rnd=9,
+    #     rc_chart=(3,3),
+    #     save=False
+    # )
     
-    # 1. Gọi thử Time-pattern Heatmap
-    visual.plot_time_pattern_heatmap(
-        figsize=(15, 8),
-        save=False
-    )
+    # 3. Gọi thử Time-pattern Heatmap
+    # visual.plot_time_pattern_heatmap(
+    #     figsize=(15, 8),
+    #     save=False
+    # )
 
     # # 2. Gọi thử Histogram
-    visual.plot_histogram(
-        figsize=(12, 6),
-        save=False
-    )
+    # visual.plot_histogram(
+    #     figsize=(12, 6),
+    #     save=False
+    # )
+
+    visual.plot_random_users_boxplot(save=True)
+    visual.plot_random_users_acf(save=True)
+    visual.plot_monthly_boxplot(save=True)
+    visual.plot_monthly_acf(save=True)

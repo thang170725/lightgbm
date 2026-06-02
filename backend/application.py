@@ -2,8 +2,8 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import io
-from backend.app.models.lightgbm import LightGBMTrainer
-from backend.app.models.model_manager import ModelManager
+from app.models.lightgbm import LightGBMTrainer
+from app.models.model_manager import ModelManager
 
 app = FastAPI()
 
