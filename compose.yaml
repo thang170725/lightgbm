@@ -8,7 +8,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./backend:/app # để nhìn code trên máy, sửa code không cần build lại
       - ./backend/dataset:/app/dataset
+      - ./backend/models:/app/models
   
   frontend:
     build: ./frontend
@@ -18,3 +20,6 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules

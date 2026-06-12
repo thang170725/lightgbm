@@ -5,12 +5,19 @@ import Upload from "@/src/components/Upload";
 import Chart from "@/src/components/Chart";
 import Table from "@/src/components/Table";
 import Metrics, { type EvaluateMetrics } from "@/src/components/Metrics";
+import type { ModelChoice } from "@/routes/UploadApi";
 
 type ForecastPoint = { time: string; value: number };
+
+const MODEL_LABELS: Record<ModelChoice, string> = {
+    lightgbm: "LightGBM",
+    ridge: "Ridge",
+};
 
 export default function Home() {
     const [forecast, setForecast] = useState<ForecastPoint[]>([]);
     const [evaluate, setEvaluate] = useState<EvaluateMetrics | null>(null);
+    const [activeModel, setActiveModel] = useState<ModelChoice | null>(null);
 
     const hasResults = forecast.length > 0 && evaluate !== null;
 
@@ -20,7 +27,9 @@ export default function Home() {
                 <header className="mb-8 flex flex-col gap-6 lg:mb-10 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-xl">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-teal-700/90">
-                            LightGBM · hourly forecast
+                            {activeModel
+                                ? `${MODEL_LABELS[activeModel]} · hourly forecast`
+                                : "LightGBM / Ridge · hourly forecast"}
                         </p>
                         <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
                             Electricity load prediction
@@ -30,11 +39,28 @@ export default function Home() {
                             <code className="rounded bg-slate-200/80 px-1.5 py-0.5 text-sm text-slate-800">value</code>) to get the next 24h forecast and model metrics.
                         </p>
                     </div>
-                    <Upload setForecast={setForecast} setEvaluate={setEvaluate} />
+                    <Upload
+                        setForecast={setForecast}
+                        setEvaluate={setEvaluate}
+                        setActiveModel={setActiveModel}
+                    />
                 </header>
 
                 {hasResults && (
                     <div className="space-y-6">
+                        {activeModel && (
+                            <div
+                                className={[
+                                    "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium",
+                                    activeModel === "lightgbm"
+                                        ? "bg-teal-50 text-teal-800 ring-1 ring-teal-600/15"
+                                        : "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-600/15",
+                                ].join(" ")}
+                            >
+                                <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                                Results from {MODEL_LABELS[activeModel]}
+                            </div>
+                        )}
                         <Metrics evaluate={evaluate} />
 
                         <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
