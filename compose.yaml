@@ -4,7 +4,7 @@ services:
   backend:
     build: ./backend
     container_name: p_lightgbm_backend_container
-    restart: always
+    restart: "no"
     ports:
       - "8000:8000"
     volumes:
@@ -15,7 +15,7 @@ services:
   frontend:
     build: ./frontend
     container_name: p_lightgbm_frontend_container
-    restart: always
+    restart: "no"
     ports:
       - "3000:3000"
     depends_on:

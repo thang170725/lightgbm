@@ -1,6 +1,6 @@
-from backend.app.utils.preprocessor import Preprocessor
-from backend.app.models.lightgbm import LightGBMTrainer
-from backend.app.models.model_manager import ModelManager
+# from backend.app.utils.preprocessor import Preprocessor
+# from backend.app.models.lightgbm import LightGBMTrainer
+# from backend.app.models.model_manager import ModelManager
 
 # 1. check data
 # data_checker = DataChecker()
@@ -23,17 +23,14 @@ from backend.app.models.model_manager import ModelManager
 # )
 # loader = model_manager.load_model(name='lightgbm_model_v2.pkl')
 # print(loader)
+
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from pandas.plotting import autocorrelation_plot
 
-t = np.arange(100)
-
-series = pd.Series(
-    np.sin(2*np.pi*t/12)
+df = pd.read_csv(
+    "dataset/LD2011_2014.txt",
+    sep=";",
+    decimal=",",
+    parse_dates=[0]
 )
 
-autocorrelation_plot(series)
-
-plt.show()
+print(df.head(5))

@@ -5,20 +5,19 @@ import seaborn as sns
 import os
 from pandas.plotting import autocorrelation_plot
 
-# ==== Class chuyên biệt để vẽ biểu đồ =====
+# ==================================================
+# ==== Class chuyên biệt để vẽ biểu đồ ==========
+# ==================================================
 class VisualDatasetTXTV1:
     def __init__(self, dataset_path: str = None):
-        if dataset_path is None:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            backend_dir = os.path.dirname(os.path.dirname(current_dir))
-            dataset_path = os.path.join(backend_dir, "LD2011_2014.txt")
-            
-        self.df = pd.read_csv(
+        self.df: pd.DataFrame = pd.read_csv(
             dataset_path,
             sep=";",
             decimal=",",
             parse_dates=[0]
         )
+        # đổi tên cột
+        self.df.rename(columns={"Unnamed: 0": "timestamp"}, inplace=True)
 
         self.columns = self.df.columns
         self.rows = len(self.df)
@@ -27,15 +26,17 @@ class VisualDatasetTXTV1:
     # ===== 1. biểu đồ đường mô tả sự biến thiên về mức sử dụng điện của các user =====
     # dùng để xem mức phân bổ sử dụng điện của user
     def dayly_load_chart(self,                                     
-        images: int,                                    
+        images: int,                                # số lượng ảnh    
         size_rnd: int,                              # số lượng biểu đồ muốn tạo (18: muốn tạo 18 cái biểu đồ)                       
         space_chart: tuple,                         # khoảng cách của các biểu đồ trong cùng một page (w,h)        
         rc_chart: tuple,                            # số hàng cột trong 1 images ((3,3): tạo ra 1 ảnh bên trong có 9 buổi đồ 3x3)        
-        save:bool = False,                              
-        save_path: str = "backend/dataset/images"     
+        save:bool = False,                          # cho phép lưu hay không
+        save_path: str = "backend/dataset/images"   # đường dẫn lưu ảnh (tính từ thư mục chạy lệnh python)
     ):
+        # 1. chọn user muốn vẽ biểu đồ
         users = np.random.choice(self.columns[1:], size=size_rnd, replace=False)                
 
+        # 2. gom theo 5 ngày để vẽ biểu đồ cho đẹp (đủ thấy xu hướng)
         daily_df = (
             self.df
             .set_index("timestamp")
@@ -44,8 +45,10 @@ class VisualDatasetTXTV1:
             .reset_index()
         )
 
+        # 3. sử dụng lineplot để vẽ biểu đồ
         per_page = rc_chart[0]*rc_chart[1]
         for page in range(images):
+            # lấy ra nhóm user để vẽ vào page hiện tại
             subset = users[page*per_page:(page+1)*per_page]
 
             fig, axes = plt.subplots(
@@ -95,19 +98,20 @@ class VisualDatasetTXTV1:
         save=False,
         save_path="./backend/dataset/images"        
     ):
+        # 1. copy DataFrame không sửa trực tiếp vào df gốc
         df = self.df.copy()
 
-        df["Unnamed: 0"] = pd.to_datetime(
-            df["timestamp"]
-        )
+        # 2. chuyển đổi kiểu dữ liệu
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
 
-        df["aggregate"] = df.iloc[:,1:].sum(axis=1)
-
-        df["date"] = df["Unnamed: 0"].dt.date
-        df["hour"] = df["Unnamed: 0"].dt.hour + df["Unnamed: 0"].dt.minute/60 # để làm trúc X
+        # 3. tạo thêm cột mới
+        df["aggregate"] = df.iloc[:,1:].sum(axis=1) # để làm trục Y
+        df["date"] = df["timestamp"].dt.date
+        df["hour"] = df["timestamp"].dt.hour + df["timestamp"].dt.minute/60 # để làm trúc X
 
         all_days = df["date"].unique()
 
+        # 4. chọn random 1 vài ngày để vẽ biểu đồ
         random_days = np.random.choice(
             all_days,
             size=size_rnd,
@@ -121,9 +125,7 @@ class VisualDatasetTXTV1:
         axes = axes.flatten()
 
         for i, day in enumerate(random_days):
-            day_data = df[
-                df["date"] == day
-            ]
+            day_data = df[df["date"] == day]
 
             sns.lineplot(
                 x=day_data["hour"],
@@ -163,7 +165,6 @@ class VisualDatasetTXTV1:
                 dpi=300,
                 bbox_inches="tight"
             )
-
         else: 
             plt.show()
         plt.close(fig)
@@ -177,19 +178,20 @@ class VisualDatasetTXTV1:
     ):
         # 1. copy data tránh sửa trên df gốc
         df: pd.DataFrame = self.df.copy()
-        # print(df.head())
+        print(df.head())
 
         # 2. đổi kiểu dữ liệu & thêm đặc trưng
-        df["Unnamed: 0"] = pd.to_datetime(df["Unnamed: 0"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
 
+        # 3. thêm cột moied
         df["aggregate"] = df.iloc[:,1:].sum(axis=1) # tổng điện năng của 370 người mỗi một khung giờ
-        df["hour"] = df["Unnamed: 0"].dt.hour
-        df["day_name"] = df["Unnamed: 0"].dt.day_name()
-        df["day_of_week"] = df["Unnamed: 0"].dt.dayofweek
+        df["hour"] = df["timestamp"].dt.hour
+        df["day_name"] = df["timestamp"].dt.day_name()
+        df["day_of_week"] = df["timestamp"].dt.dayofweek
         print(df.head())
 
         # 3. tính trung bình lượng điện năng
-        pivot_df = df.groupby(['day_name', 'day_of_week', 'hour'])['aggregate'].mean().reset_index() # có cần phải chi 4 chỗ này không vì đơn vị phải dùng Kwh
+        pivot_df = df.groupby(['day_name', 'day_of_week', 'hour'])['aggregate'].mean().reset_index()
         print(pivot_df.head())
 
         # 4. xoay dữ liệu từ dạng dài thành dạng rộng
@@ -200,11 +202,12 @@ class VisualDatasetTXTV1:
         # 5. tính trung bình lượng điện năng của 0 -> 24
         diff = heatmap_data.mean()
         heatmap_data_diff = heatmap_data - diff # xem có cao hơn hay nhỏ hơn giá trị mốc (diff) - giá trị trung bình
+        print(diff, heatmap_data_diff)
 
         # 6. cấu hình lại để chuẩn bị vẽ lên đồ thị
         days_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         days_order = [day for day in days_order if day in heatmap_data.index]
-        heatmap_data_diff = heatmap_data_diff.reindex(days_order) # cái này chx học
+        heatmap_data_diff = heatmap_data_diff.reindex(days_order)
 
         # 7. vẽ đồ thị
         fig, ax = plt.subplots(figsize=figsize)
@@ -240,8 +243,10 @@ class VisualDatasetTXTV1:
         save=False,
         save_path="./backend/dataset/images"
     ):
+        # 1. copy tránh sửa vào df gốc
         df = self.df.copy()
 
+        # 2. tạo feature
         df["aggregate"] = df.iloc[:,1:].sum(axis=1)
 
         fig, ax = plt.subplots(figsize=figsize)
@@ -640,7 +645,7 @@ class VisualDatasetTXTV1:
         plt.close(fig)
 
 if __name__ == "__main__":
-    visual = VisualDatasetTXTV1(dataset_path="backend/dataset/LD2011_2014.txt")
+    visual = VisualDatasetTXTV1(dataset_path="dataset/LD2011_2014.txt")
     # visual.dayly_load_chart(
     #     images=3,
     #     size_rnd=27,
@@ -656,10 +661,10 @@ if __name__ == "__main__":
     # )
     
     # 3. Gọi thử Time-pattern Heatmap
-    # visual.plot_time_pattern_heatmap(
-    #     figsize=(15, 8),
-    #     save=False
-    # )
+    visual.plot_time_pattern_heatmap(
+        figsize=(15, 8),
+        save=False
+    )
 
     # # 2. Gọi thử Histogram
     # visual.plot_histogram(
@@ -667,7 +672,7 @@ if __name__ == "__main__":
     #     save=False
     # )
 
-    visual.plot_random_users_boxplot(save=True)
-    visual.plot_random_users_acf(save=True)
-    visual.plot_monthly_boxplot(save=True)
-    visual.plot_monthly_acf(save=True)
+    # visual.plot_random_users_boxplot(save=True)
+    # visual.plot_random_users_acf(save=True)
+    # visual.plot_monthly_boxplot(save=True)
+    # visual.plot_monthly_acf(save=True)

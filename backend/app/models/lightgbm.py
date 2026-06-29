@@ -25,14 +25,6 @@ class LightGBMTrainer:
         self.valid = pd.read_csv(valid_path)
         self.test = pd.read_csv(test_path)
 
-        # self.features = [
-        #     "hour_sin",
-        #     "hour_cos",
-        #     "day_of_week",
-        #     "lag_24h",
-        #     "lag_7d",
-        #     "rolling_mean_24h"
-        # ]
         # LightGBMTrainer
         self.features = [
             "hour_sin", "hour_cos", "day_of_week", "is_weekend",
@@ -348,25 +340,15 @@ class LightGBMTrainerV2:
         # === version 2 ===
         model = lgb.LGBMRegressor(
             objective="regression",
-
             n_estimators=3000,
-
             learning_rate=0.005,
-
             num_leaves=127,
-
             max_depth=8,
-
             subsample=0.8,
-
             colsample_bytree=0.8,
-
             min_child_samples=20,
-
             random_state=42,
-
             n_jobs=-1,
-
             verbosity=-1
         )
 
